@@ -16,6 +16,21 @@ create table if not exists public.lines (
   created_at  timestamptz not null default now()
 );
 
+-- 예전 설계도에 있던 오타(massage)를 정식 이름(message)으로 바로잡습니다.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'lines' and column_name = 'massage'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'lines' and column_name = 'message'
+  ) then
+    alter table public.lines rename column massage to message;
+  end if;
+end
+$$;
+
 -- 최신 글부터 빠르게 꺼내기 위한 색인
 create index if not exists lines_user_created_idx
   on public.lines (user_id, created_at desc);
