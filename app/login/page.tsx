@@ -24,11 +24,18 @@ export default function LoginPage() {
     set기다리는중(true);
     set알림("");
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    });
 
     set기다리는중(false);
     if (error) {
-      set알림(error.message);
+      set알림(
+        error.message === "Invalid login credentials"
+          ? "이메일 또는 비밀번호가 맞지 않습니다. 가입한 이메일과 비밀번호를 확인해주세요."
+          : error.message
+      );
       return;
     }
     router.push("/");
@@ -39,13 +46,23 @@ export default function LoginPage() {
     set기다리는중(true);
     set알림("");
 
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim().toLowerCase(),
+      password,
+    });
 
     set기다리는중(false);
     if (error) {
       set알림(error.message);
       return;
     }
+
+    if (data.session) {
+      router.push("/");
+      router.refresh();
+      return;
+    }
+
     // Supabase 설정에 따라 확인 메일이 갑니다. 스팸함도 확인하세요.
     set알림("가입 완료. 확인 메일이 갔다면 인증 후 로그인해주세요.");
   }
