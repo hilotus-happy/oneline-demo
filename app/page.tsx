@@ -40,6 +40,11 @@ export default function HomePage() {
 
     if (!res.ok) {
       // 상태코드로 무슨 일인지 알 수 있습니다. 4는 손님 잘못, 5는 가게 잘못.
+      if (res.status === 401) {
+        await supabase.auth.signOut();
+        set이메일(null);
+        setLines([]);
+      }
       set알림(`불러오지 못했습니다 (${res.status})`);
       set불러오는중(false);
       return;

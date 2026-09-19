@@ -32,6 +32,12 @@ function 팔찌확인(req: Request): string | null {
   return h.slice(7);
 }
 
+async function 손님확인(팔찌: string) {
+  const supabase = 창고열기(팔찌);
+  const { data: { user }, error } = await supabase.auth.getUser();
+  return error || !user ? null : { supabase, user };
+}
+
 // ── GET · 보여주세요 ──────────────────────────────────────────
 export async function GET(req: Request) {
   const 팔찌 = 팔찌확인(req);
@@ -40,7 +46,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  const supabase = 창고열기(팔찌);
+  const 손님 = await 손님확인(팔찌);
+  if (!손님) {
+    return NextResponse.json({ error: "팔찌가 만료됐습니다." }, { status: 401 });
+  }
+
+  const { supabase } = 손님;
   const { data, error } = await supabase
     .from("lines")
     .select("id, nickname, message, created_at")
@@ -69,19 +80,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "한 줄을 입력해주세요." }, { status: 400 });
   }
 
-  const supabase = 창고열기(팔찌);
-
-  // 누가 쓴 글인지는 손님이 아니라 웨이터가 채웁니다.
-  // 손님이 user_id 를 직접 보내게 두면 남의 이름으로 쓸 수 있습니다.
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  const 손님 = await 손님확인(팔찌);
+  if (!손님) {
     return NextResponse.json({ error: "팔찌가 만료됐습니다." }, { status: 401 });
   }
 
+  const { supabase } = 손님;
+
+  // 누가 쓴 글인지는 손님이 아니라 웨이터가 채웁니다.
+  // 손님이 user_id 를 직접 보내게 두면 남의 이름으로 쓸 수 있습니다.
   const { data, error } = await supabase
     .from("lines")
     .insert({
-      user_id: user.id,
+      user_id: 손님.user.id,
       nickname: (nickname ?? "").trim() || "익명",
       message: message.trim(),
     })
@@ -109,7 +120,12 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "어느 줄을 지울지 알려주세요." }, { status: 400 });
   }
 
-  const supabase = 창고열기(팔찌);
+  const 손님 = await 손님확인(팔찌);
+  if (!손님) {
+    return NextResponse.json({ error: "팔찌가 만료됐습니다." }, { status: 401 });
+  }
+
+  const { supabase } = 손님;
 
   // where 를 반드시 붙입니다. 빼면 장부 전체가 날아갑니다. (③회차 경고)
   // 남의 줄을 지우려 해도 RLS 가 막아서 0건 삭제로 끝납니다.
